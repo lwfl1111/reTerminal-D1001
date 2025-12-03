@@ -22,6 +22,24 @@ static void screen_set_color(uint32_t color)
     lv_obj_t *scr = lv_scr_act();
     lv_obj_set_style_bg_color(scr, lv_color_hex(color), LV_PART_MAIN);
     lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, LV_PART_MAIN);
+
+    if(color & 0xff000) {
+        bsp_led_red_set(0);
+    } else {
+        bsp_led_red_set(1);
+    }
+
+    if(color & 0x00ff00) {
+        bsp_led_green_set(0);
+    } else {
+        bsp_led_green_set(1);
+    }
+
+    if(color & 0x0000ff) {
+        bsp_led_blue_set(0);
+    } else {
+        bsp_led_blue_set(1);
+    }
 }
 
 LcdTest::LcdTest():
@@ -39,6 +57,9 @@ bool LcdTest::run(void)
 {
     lv_obj_add_event_cb(lv_scr_act(), color_change_cb, LV_EVENT_GESTURE, this);
     xTaskCreatePinnedToCore(color_change_task, "Color task", 4096, this, 1, &color_task_handle, 0);
+    bsp_led_red_set(0);
+    bsp_led_green_set(0);
+    bsp_led_blue_set(0);
     return true;
 }
 
@@ -54,6 +75,9 @@ bool LcdTest::close(void)
     {
         vTaskDelete(color_task_handle);
     }
+    bsp_led_red_set(1);
+    bsp_led_green_set(1);
+    bsp_led_blue_set(1);
     return true;
 }
 
