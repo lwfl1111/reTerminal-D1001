@@ -12,3 +12,4 @@
 #include "power_off/PowerOff.hpp"
 #include "sensor/Sensor.hpp"
 #include "lcd_test/LcdTest.hpp"
+#include "touch_test/TouchTest.hpp"

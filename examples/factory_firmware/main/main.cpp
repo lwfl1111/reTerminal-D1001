@@ -106,6 +106,10 @@ extern "C" void app_main(void)
     assert(lcd_test != nullptr && "Failed to create lcd test");
     assert((phone->installApp(lcd_test) >= 0) && "Failed to begin lcd test");
 
+    TouchTest *touch_test = new TouchTest();
+    assert(touch_test != nullptr && "Failed to create touch test");
+    assert((phone->installApp(touch_test) >= 0) && "Failed to begin touch test");
+
     PowerOff *power_off = new PowerOff();
     assert(power_off != nullptr && "Failed to create power off");
     assert((phone->installApp(power_off) >= 0) && "Failed to begin power off");
