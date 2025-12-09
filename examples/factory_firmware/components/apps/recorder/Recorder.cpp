@@ -77,7 +77,7 @@ bool Recorder::run(void)
     }
 
     xTaskCreatePinnedToCore(recorder_task, "Recorder task", 8192, this, 2, &_recorder_task_handle, 0);
-    xTaskCreatePinnedToCore(recorder_afe_fetch_task, "Recorder afe task", 8192, this, 2, &_recorder_afe_fetch_task_handle, 0);
+    xTaskCreatePinnedToCore(recorder_afe_fetch_task, "Recorder afe task", 4096, this, 2, &_recorder_afe_fetch_task_handle, 0);
 
     font = &lv_font_montserrat_24;
 

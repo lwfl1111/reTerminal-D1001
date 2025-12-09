@@ -184,22 +184,12 @@ static void image_change_display(file_iterator_instance_t *ft,int index)
         ESP_LOGE(TAG,"alloc output buf failed");
         return;
     }
+
     uint32_t out_size_image = 0;
-    
+    // why the image is decoded incomplete on the first time?
+    ESP_ERROR_CHECK(jpeg_decoder_process(jpgd_handle, &decode_cfg_rgb, input_buf, input_buffer_size_image, output_buf, output_buf_size, &out_size_image));
     ESP_ERROR_CHECK(jpeg_decoder_process(jpgd_handle, &decode_cfg_rgb, input_buf, input_buffer_size_image, output_buf, output_buf_size, &out_size_image));
 
-    // lv_img_dsc_t img_dsc = {
-    //     .data = output_buf,
-    //     .data_size = out_size_image,
-    //     .header ={
-    //         .w = 800,
-    //         .h = 1280,
-    //         .cf = LV_IMG_CF_TRUE_COLOR_ALPHA,
-    //         .always_zero = 0,
-    //         .reserved = 0,
-    //     }
-    // }
-    
     bsp_display_lock(0);
     lv_canvas_set_buffer(app_image_mian, output_buf, image_info.width, image_info.height, LV_IMG_CF_TRUE_COLOR);
     lv_refr_now(NULL);
@@ -207,7 +197,6 @@ static void image_change_display(file_iterator_instance_t *ft,int index)
 
     free(input_buf);
     free(output_buf);
-
 }
 
 void AppImageDisplay::image_change_cb(lv_event_t *e)

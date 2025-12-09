@@ -99,7 +99,7 @@ bool Sensor::run(void)
     lv_img_set_src(img_red_dot, &img_app_red_dot);
     lv_img_set_zoom(img_red_dot, 100);
 
-    xTaskCreatePinnedToCore(sensor_task, "Sensor task", 8192, this, 2, &_sensor_task_handle, 0);
+    xTaskCreatePinnedToCore(sensor_task, "Sensor task", 4096, this, 2, &_sensor_task_handle, 0);
     
     return true;
 }

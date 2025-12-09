@@ -1168,7 +1168,7 @@ esp_err_t bsp_sd_card_manage_start(bool cmd)
         }
     }
 
-    xTaskCreate(bsp_sd_card_auto_mount_task, "sd-card", 4096, NULL, 1, &sd_card_m_task_handle);
+    xTaskCreate(bsp_sd_card_auto_mount_task, "sd-card", 2048, NULL, 1, &sd_card_m_task_handle);
 
     return ret;
 }
