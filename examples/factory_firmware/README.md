@@ -2,6 +2,8 @@
 ```
 This example based on the development of esp_brookesia_phone. 
 This factory firmware demonstrates the peripheral functions of the device. 
+Some peripheral working need micro sd card to store file. 
+And the device will format sd card to FAT32, back up your data first.
 ```
 
 ## Features

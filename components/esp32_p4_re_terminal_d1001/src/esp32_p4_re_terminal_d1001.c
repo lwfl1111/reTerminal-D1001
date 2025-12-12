@@ -101,6 +101,12 @@ static TaskHandle_t sd_card_m_task_handle;
 static bool sd_card_insert = false;
 static bool sd_mount_flag = false;
 
+static uint32_t bsp_boot_count = 0;
+
+#define LED_GREEN_DC_DEF    8
+#define LED_RED_DC_DEF      20
+#define LED_BLUE_DC_DEF     50
+
 lsm6ds3_handle_t lsm6ds3;
 pcf8563_handle_t pcf8563;
 
@@ -485,6 +491,13 @@ esp_codec_dev_handle_t bsp_audio_codec_microphone_init(void)
 esp_err_t bsp_display_brightness_init(void)
 {
     // Setup LEDC peripheral for PWM backlight control
+    const ledc_timer_config_t LCD_backlight_timer = {
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .duty_resolution = LEDC_TIMER_10_BIT,
+        .timer_num = 1,
+        .freq_hz = 1000,
+        .clk_cfg = LEDC_AUTO_CLK
+    };
     const ledc_channel_config_t LCD_backlight_channel = {
         .gpio_num = BSP_LCD_BACKLIGHT,
         .speed_mode = LEDC_LOW_SPEED_MODE,
@@ -494,16 +507,38 @@ esp_err_t bsp_display_brightness_init(void)
         .duty = 0,
         .hpoint = 0
     };
-    const ledc_timer_config_t LCD_backlight_timer = {
+    const ledc_channel_config_t RGB_red_channel = {
+        .gpio_num = BSP_LED_R,
         .speed_mode = LEDC_LOW_SPEED_MODE,
-        .duty_resolution = LEDC_TIMER_10_BIT,
-        .timer_num = 1,
-        .freq_hz = 5000,
-        .clk_cfg = LEDC_AUTO_CLK
+        .channel = 2,
+        .intr_type = LEDC_INTR_DISABLE,
+        .timer_sel = 1,
+        .duty = 100,
+        .hpoint = 0
     };
-
+    const ledc_channel_config_t RGB_green_channel = {
+        .gpio_num = BSP_LED_G,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = 3,
+        .intr_type = LEDC_INTR_DISABLE,
+        .timer_sel = 1,
+        .duty = 100,
+        .hpoint = 0
+    };
+    const ledc_channel_config_t RGB_blue_channel = {
+        .gpio_num = BSP_LED_B,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = 4,
+        .intr_type = LEDC_INTR_DISABLE,
+        .timer_sel = 1,
+        .duty = 100,
+        .hpoint = 0
+    };
     BSP_ERROR_CHECK_RETURN_ERR(ledc_timer_config(&LCD_backlight_timer));
     BSP_ERROR_CHECK_RETURN_ERR(ledc_channel_config(&LCD_backlight_channel));
+    BSP_ERROR_CHECK_RETURN_ERR(ledc_channel_config(&RGB_red_channel));
+    BSP_ERROR_CHECK_RETURN_ERR(ledc_channel_config(&RGB_green_channel));
+    BSP_ERROR_CHECK_RETURN_ERR(ledc_channel_config(&RGB_blue_channel));
     brightness_init = true;
     return ESP_OK;
 }
@@ -536,6 +571,28 @@ esp_err_t bsp_display_backlight_off(void)
 esp_err_t bsp_display_backlight_on(void)
 {
     return bsp_display_brightness_set(backlight_default);
+}
+
+esp_err_t bsp_rgb_led_duty_set(uint8_t rgb, int percent)
+{
+    char str[4] = {'r','g','b',0};
+    if(rgb > 2) return ESP_FAIL;
+    if (brightness_init) {
+        if (percent > 100) {
+            percent = 100;
+        }
+        if (percent < 0) {
+            percent = 0;
+        }
+
+        ESP_LOGI(TAG, "Setting RGB led: %c, %d%%", str[rgb], percent);
+        uint32_t duty_cycle = (1024 * (100 - percent)) / 100; // LEDC resolution set to 10bits, thus: 100% = 1023
+        BSP_ERROR_CHECK_RETURN_ERR(ledc_set_duty(LEDC_LOW_SPEED_MODE, rgb + 2, duty_cycle));
+        BSP_ERROR_CHECK_RETURN_ERR(ledc_update_duty(LEDC_LOW_SPEED_MODE, rgb + 2));
+        return ESP_OK;
+    } else {
+        return ESP_FAIL;
+    }
 }
 
 static esp_err_t bsp_enable_dsi_phy_power(void)
@@ -1057,6 +1114,7 @@ static void bsp_battery_charge_task(void *arg)
 #endif
 
         vTaskDelay(pdMS_TO_TICKS(2000));
+        bsp_boot_count += 2;
     }
 }
 
@@ -1186,24 +1244,26 @@ bool bsp_backlight_get_enable_state(void)
 static void bsp_button_single_click_event_cb(void *arg, void *data)
 {
     esp_err_t ret = ESP_OK;
-    if (backlight_enable) {
-        backlight_enable = false;
-        bsp_display_brightness_set(0);
-        ESP_LOGI(TAG, "display brightness: 0");
-        if (disp_panel) {
-            ret = esp_lcd_panel_disp_on_off(disp_panel, false);
-            if (ret == ESP_OK) {
-                ESP_LOGI(TAG, "display panel trun off");
+    if (bsp_boot_count > 6) { // Prevent accidental triggering during startup
+        if (backlight_enable) {
+            backlight_enable = false;
+            bsp_display_brightness_set(0);
+            ESP_LOGI(TAG, "display brightness: 0");
+            if (disp_panel) {
+                ret = esp_lcd_panel_disp_on_off(disp_panel, false);
+                if (ret == ESP_OK) {
+                    ESP_LOGI(TAG, "display panel trun off");
+                }
             }
-        }
-    } else {
-        backlight_enable = true;
-        bsp_display_brightness_set(backlight_default);
-        ESP_LOGI(TAG, "display brightness: %d", backlight_default);
-        if (disp_panel) {
-            ret = esp_lcd_panel_disp_on_off(disp_panel, true);
-            if (ret == ESP_OK) {
-                ESP_LOGI(TAG, "display panel trun on");
+        } else {
+            backlight_enable = true;
+            bsp_display_brightness_set(backlight_default);
+            ESP_LOGI(TAG, "display brightness: %d", backlight_default);
+            if (disp_panel) {
+                ret = esp_lcd_panel_disp_on_off(disp_panel, true);
+                if (ret == ESP_OK) {
+                    ESP_LOGI(TAG, "display panel trun on");
+                }
             }
         }
     }
@@ -1223,17 +1283,23 @@ static void bsp_button_long_press_event_cb(void *arg, void *data)
 
 void bsp_led_red_set(bool cmd)
 {
-    gpio_set_level(BSP_LED_R, cmd);
+    // gpio_set_level(BSP_LED_R, cmd? false : true);
+    if(cmd) bsp_rgb_led_duty_set(0, LED_RED_DC_DEF);
+    else bsp_rgb_led_duty_set(0, 0);
 }
 
 void bsp_led_green_set(bool cmd)
 {
-    gpio_set_level(BSP_LED_G, cmd);
+    // gpio_set_level(BSP_LED_G, cmd? false : true);
+    if(cmd) bsp_rgb_led_duty_set(1, LED_GREEN_DC_DEF);
+    else bsp_rgb_led_duty_set(1, 0);
 }
 
 void bsp_led_blue_set(bool cmd)
 {
-    gpio_set_level(BSP_LED_B, cmd);
+    // gpio_set_level(BSP_LED_B, cmd? false : true);
+    if(cmd) bsp_rgb_led_duty_set(2, LED_BLUE_DC_DEF);
+    else bsp_rgb_led_duty_set(2, 0);
 }
 
 void bsp_power_off(void)
@@ -1314,17 +1380,17 @@ esp_err_t bsp_power_init(void)
         .mode = GPIO_MODE_OUTPUT,
     };
 
-    io_out_conf.pin_bit_mask = 1ULL << BSP_LED_R;
-    gpio_config(&io_out_conf);
-    gpio_set_level(BSP_LED_R, 1); // trun off led red
+    // io_out_conf.pin_bit_mask = 1ULL << BSP_LED_R;
+    // gpio_config(&io_out_conf);
+    // gpio_set_level(BSP_LED_R, 0); // trun off led red
 
-    io_out_conf.pin_bit_mask = 1ULL << BSP_LED_G;
-    gpio_config(&io_out_conf);
-    gpio_set_level(BSP_LED_G, 1); // trun off led green
+    // io_out_conf.pin_bit_mask = 1ULL << BSP_LED_G;
+    // gpio_config(&io_out_conf);
+    // gpio_set_level(BSP_LED_G, 0); // trun off led green
 
-    io_out_conf.pin_bit_mask = 1ULL << BSP_LED_B;
-    gpio_config(&io_out_conf);
-    gpio_set_level(BSP_LED_B, 1); // trun off led blue
+    // io_out_conf.pin_bit_mask = 1ULL << BSP_LED_B;
+    // gpio_config(&io_out_conf);
+    // gpio_set_level(BSP_LED_B, 0); // trun off led blue
 
     // Reduce signal overshoot
     gpio_set_drive_capability(BSP_WIFI_SDIO_CLK, GPIO_DRIVE_CAP_1);

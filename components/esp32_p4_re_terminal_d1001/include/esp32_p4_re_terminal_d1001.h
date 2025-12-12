@@ -509,6 +509,13 @@ bool bsp_backlight_get_enable_state(void);
 
 /**
  * @brief 
+ * 
+ * @return
+ */
+esp_err_t bsp_rgb_led_duty_set(uint8_t rgb, int percent);
+
+/**
+ * @brief 
  *
  * @param[in] cmd 
  */

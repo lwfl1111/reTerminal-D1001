@@ -15,6 +15,13 @@ LV_IMG_DECLARE(img_app_recorder);
 #define scr_act_height() lv_obj_get_height(lv_scr_act())
 
 static const lv_font_t* font;
+
+static lv_style_t style_0;
+static lv_style_t style_1;
+static lv_style_t style_2;
+
+static lv_obj_t *label_tips_1;
+static lv_obj_t *label_tips_2;
 static lv_obj_t *label_status;
 static lv_obj_t *btn_record;
 static lv_obj_t *btn_playback;
@@ -37,7 +44,7 @@ static uint32_t afe_feed_read_total = 0;
 static uint32_t afe_fetch_read_total = 0;
 
 Recorder::Recorder():
-    ESP_Brookesia_PhoneApp("Recorder", &img_app_recorder, true)
+    ESP_Brookesia_PhoneApp("Recorder", &img_app_recorder, true, false, false)
 {
     
 }
@@ -81,42 +88,81 @@ bool Recorder::run(void)
 
     font = &lv_font_montserrat_24;
 
+    lv_style_init(&style_0);
+    lv_style_set_bg_color(&style_0, lv_color_hex(0xefeff0));
+    lv_style_set_bg_opa(&style_0, LV_OPA_COVER);
+
+    lv_obj_t *obj = lv_obj_create(lv_scr_act());
+    lv_obj_add_style(obj, &style_0, LV_PART_MAIN);
+    lv_obj_set_size(obj, 800, 132);
+    lv_obj_set_pos(obj, 0, 0);
+
+    // label_tips_1 = lv_label_create(lv_scr_act());
+    // lv_obj_set_style_text_font(label_tips_1, &lv_font_montserrat_20, LV_PART_MAIN);
+    // lv_label_set_text(label_tips_1, "Please insert a Micro SD card.");
+    // lv_obj_align(label_tips_1, LV_ALIGN_CENTER, 0, -600 );
+
+    // label_tips_2 = lv_label_create(lv_scr_act());
+    // lv_obj_set_style_text_font(label_tips_2, &lv_font_montserrat_18, LV_PART_MAIN);
+    // lv_label_set_text(label_tips_2, "The device will format it to FAT32, back up your data first.");
+    // lv_obj_align(label_tips_2, LV_ALIGN_CENTER, 0, -560);
+
+    label_tips_1 = lv_label_create(obj);
+    lv_obj_set_style_text_font(label_tips_1, &lv_font_montserrat_20, LV_PART_MAIN);
+    lv_label_set_text(label_tips_1, "Please insert a Micro SD card.");
+    lv_obj_align(label_tips_1, LV_ALIGN_CENTER, 0, -20 );
+
+    label_tips_2 = lv_label_create(obj);
+    lv_obj_set_style_text_font(label_tips_2, &lv_font_montserrat_18, LV_PART_MAIN);
+    lv_label_set_text(label_tips_2, "The device will format it to FAT32, back up your data first.");
+    lv_obj_align(label_tips_2, LV_ALIGN_CENTER, 0, 20);
+
     label_status = lv_label_create(lv_scr_act());
-    lv_obj_set_style_text_font(label_status, font, LV_PART_MAIN);
-    lv_label_set_text(label_status, "Status: idle");
-    lv_obj_align(label_status, LV_ALIGN_CENTER, 0, -scr_act_height() / 3);
+    lv_obj_set_style_text_font(label_status, &lv_font_montserrat_30, LV_PART_MAIN);
+    lv_label_set_text(label_status, "Idle");
+    lv_obj_align(label_status, LV_ALIGN_CENTER, 0, -360);
+
+    lv_style_init(&style_1);
+    lv_style_set_radius(&style_1, LV_RADIUS_CIRCLE);
 
     btn_record = lv_btn_create(lv_scr_act());
-    lv_obj_set_size(btn_record, scr_act_width() / 4, scr_act_height() / 6);
+    lv_obj_set_size(btn_record, 229, 229);
     lv_obj_align(btn_record, LV_ALIGN_CENTER, -scr_act_width() / 4, 0);
+    lv_obj_add_style(btn_record, &style_1, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(btn_record, lv_color_hex(0xa2de4e), LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(btn_record, lv_color_hex(0x00ff00), LV_STATE_PRESSED);
     lv_obj_add_event_cb(btn_record, btn_event_cb, LV_EVENT_CLICKED, NULL);
- 
-    lv_obj_t* label = lv_label_create(btn_record);
+    
+    btn_stop = lv_btn_create(lv_scr_act());
+    lv_obj_set_size(btn_stop, 229, 229);
+    lv_obj_align(btn_stop, LV_ALIGN_CENTER, scr_act_width() / 4, 0);
+    lv_obj_add_style(btn_stop, &style_1, LV_PART_MAIN);
+    lv_obj_set_style_bg_color(btn_stop, lv_color_hex(0xff4d4f), LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(btn_stop, lv_color_hex(0xff0000), LV_STATE_PRESSED);
+    lv_obj_add_event_cb(btn_stop, btn_event_cb, LV_EVENT_CLICKED, NULL);
+    
+    btn_playback = lv_btn_create(lv_scr_act());
+    lv_obj_set_size(btn_playback, 278, 91);
+    lv_obj_align(btn_playback, LV_ALIGN_CENTER, 0, scr_act_height() / 3);
+    lv_obj_set_style_bg_color(btn_playback, lv_color_hex(0x3662ec), LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(btn_playback, lv_color_hex(0x0000ff), LV_STATE_PRESSED);
+    lv_obj_set_style_radius(btn_playback, LV_PCT(20), LV_PART_MAIN);
+    lv_obj_add_event_cb(btn_playback, btn_event_cb, LV_EVENT_CLICKED, NULL);
+    
+    lv_obj_t *label = lv_label_create(btn_record);
     lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
     lv_label_set_text(label, "Record");
     lv_obj_set_align(label, LV_ALIGN_CENTER);
 
-    btn_playback = lv_btn_create(lv_scr_act());
-    lv_obj_set_size(btn_playback, scr_act_width() / 4, scr_act_height() / 6);
-    lv_obj_align(btn_playback, LV_ALIGN_CENTER, scr_act_width() / 4, 0);
-    lv_obj_add_event_cb(btn_playback, btn_event_cb, LV_EVENT_CLICKED, NULL);
- 
-    label = lv_label_create(btn_playback);
-    lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
-    lv_label_set_text(label, "Playback");
-    lv_obj_set_align(label, LV_ALIGN_CENTER);
-
-    btn_stop = lv_btn_create(lv_scr_act());
-    lv_obj_set_size(btn_stop, scr_act_width() / 4, scr_act_height() / 6);
-    lv_obj_align(btn_stop, LV_ALIGN_CENTER, 0, scr_act_height() / 3);
-    lv_obj_set_style_bg_color(btn_stop, lv_color_hex(0xef5f60), LV_STATE_DEFAULT);
-    lv_obj_set_style_bg_color(btn_stop, lv_color_hex(0xff0000), LV_STATE_PRESSED);
-    lv_obj_add_event_cb(btn_stop, btn_event_cb, LV_EVENT_CLICKED, NULL);
- 
     label = lv_label_create(btn_stop);
     lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
     lv_label_set_text(label, "Stop");
-    lv_obj_set_align(label,LV_ALIGN_CENTER);
+    lv_obj_set_align(label, LV_ALIGN_CENTER);
+
+    label = lv_label_create(btn_playback);
+    lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
+    lv_label_set_text(label, "Play");
+    lv_obj_set_align(label, LV_ALIGN_CENTER);
     
     return true;
 }
@@ -226,7 +272,7 @@ RECORD:
         if(_recorder_status == EVENT_RECORD)
         {
             ESP_LOGI(TAG, "Status: recording");
-            lv_label_set_text_fmt(label_status, "Status: recording");
+            lv_label_set_text_fmt(label_status, "Recording");
             
             int feed_channel = bsp_extra_get_feed_channel();
             int audio_chunksize = afe_handle->get_feed_chunksize(afe_data);
@@ -287,7 +333,7 @@ RECORD:
                 ESP_LOGW(TAG, "sd-card unmount");
             }
             
-            lv_label_set_text_fmt(label_status, "Status: record finish");
+            lv_label_set_text_fmt(label_status, "Record finish");
 
             if(_recorder_status == EVENT_RECORD)
             {
@@ -302,7 +348,7 @@ RECORD:
         {
             size_t bytes_write = 0;
             ESP_LOGI(TAG, "Status: playing");
-            lv_label_set_text_fmt(label_status, "Status: playing");
+            lv_label_set_text_fmt(label_status, "Playing");
 
             if (bsp_sd_card_get_mount_state())
             {
@@ -343,7 +389,7 @@ RECORD:
                 ESP_LOGW(TAG, "sd-card unmount");
             }
 
-            lv_label_set_text_fmt(label_status, "Status: play finish");
+            lv_label_set_text_fmt(label_status, "Play finish");
 
             if(_recorder_status == EVENT_PLAY)
             {
@@ -357,7 +403,7 @@ RECORD:
         else if( _recorder_status == EVENT_STOP )
         {
             ESP_LOGI(TAG, "Status: idle");
-            lv_label_set_text_fmt(label_status, "Status: idle");
+            lv_label_set_text_fmt(label_status, "Idle");
             _recorder_status = EVENT_IDLE;
         }
     }

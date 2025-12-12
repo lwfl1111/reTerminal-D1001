@@ -31,6 +31,7 @@
 #include "usbh_modem_wifi.h"
 
 #include "esp_console.h"
+#include "argtable3/argtable3.h"
 #include "ping_cmd.h"
 
 #define ENABLE_DEBUG_LOG                (0)
@@ -1108,6 +1109,57 @@ static void on_modem_event(void *arg, esp_event_base_t event_base, int32_t event
     }
 }
 
+static struct {
+    struct arg_int *red;
+    struct arg_int *green;
+    struct arg_int *blue;
+    struct arg_end *end;
+} rgb_led_args;
+
+static int do_rgb_led_cmd(int argc, char **argv)
+{
+    int rgb = 0;
+    int duty = 0;
+
+    int nerrors = arg_parse(argc, argv, (void **)&rgb_led_args);
+    if (nerrors != 0) {
+        arg_print_errors(stderr, rgb_led_args.end, argv[0]);
+        return 1;
+    }
+
+    if (rgb_led_args.red->count > 0) {
+        duty = (int)(rgb_led_args.red->ival[0]);
+        if (duty <= 100) {   
+            bsp_rgb_led_duty_set(0, duty);
+        } else {
+            ESP_LOGI(TAG, "duty command error");
+            return 0;
+        }
+    }
+
+    if (rgb_led_args.green->count > 0) {
+        duty = (int)(rgb_led_args.green->ival[0]);
+        if (duty <= 100) {   
+            bsp_rgb_led_duty_set(1, duty);
+        } else {
+            ESP_LOGI(TAG, "duty command error");
+            return 0;
+        }
+    }
+
+    if (rgb_led_args.blue->count > 0) {
+        duty = (int)(rgb_led_args.blue->ival[0]);
+        if (duty <= 100) {   
+            bsp_rgb_led_duty_set(2, duty);
+        } else {
+            ESP_LOGI(TAG, "duty command error");
+            return 0;
+        }
+    }
+
+    return 0;
+}
+
 void AppSettings::lteStartTask(void *arg)
 {
     esp_console_repl_t *repl = NULL;
@@ -1128,6 +1180,19 @@ void AppSettings::lteStartTask(void *arg)
     ping_cmd_register_ping();
 
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
+
+    rgb_led_args.red = arg_int0("r", "red", "<r>", "Set duty cycle to red led, 0 - 100");
+    rgb_led_args.green = arg_int0("g", "green", "<g>", "Set duty cycle to green led, 0 - 100");
+    rgb_led_args.blue = arg_int0("b", "blue", "<b>", "Set duty cycle to blue led, 0 - 100");
+    rgb_led_args.end = arg_end(1);
+    const esp_console_cmd_t rgb_led_cmd = {
+        .command = "led",
+        .help = "send duty cycle to rgb led",
+        .hint = NULL,
+        .func = &do_rgb_led_cmd,
+        .argtable = &rgb_led_args
+    };
+    ESP_ERROR_CHECK(esp_console_cmd_register(&rgb_led_cmd));
 
     modem_config_t modem_config = MODEM_DEFAULT_CONFIG();
     modem_config.flags |= MODEM_FLAGS_INIT_NOT_BLOCK;

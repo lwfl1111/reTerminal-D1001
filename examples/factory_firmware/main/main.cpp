@@ -18,6 +18,16 @@
 
 static const char *TAG = "main";
 
+LV_IMG_DECLARE(logo_white_200);
+LV_IMG_DECLARE(logo_white_250);
+LV_IMG_DECLARE(logo_white_300);
+LV_IMG_DECLARE(logo_white_350);
+LV_IMG_DECLARE(logo_white_400);
+LV_IMG_DECLARE(logo_white_450);
+LV_IMG_DECLARE(logo_white_500);
+LV_IMG_DECLARE(logo_white_550);
+LV_IMG_DECLARE(logo_white_600);
+
 extern "C" void app_main(void)
 {
     bsp_power_init();
@@ -53,6 +63,40 @@ extern "C" void app_main(void)
     lv_display_t *display = bsp_display_start_with_config(&cfg);
     // bsp_display_rotate(display, LV_DISPLAY_ROTATION_90);
     bsp_display_backlight_on();
+
+    bsp_rgb_led_duty_set(0, 0);
+    bsp_rgb_led_duty_set(1, 0);
+    bsp_rgb_led_duty_set(2, 0);
+
+    static lv_style_t style;
+    lv_style_init(&style);
+    lv_style_set_bg_color(&style, lv_color_hex(0x000000));
+    lv_style_set_bg_opa(&style, LV_OPA_COVER);
+
+    lv_obj_t *obj = lv_img_create(lv_scr_act());
+    lv_obj_set_size(obj, 800, 1280);
+    lv_obj_add_style(obj, &style, LV_PART_MAIN);
+
+    lv_obj_t *logo = lv_img_create(lv_scr_act());
+    lv_obj_align(logo, LV_ALIGN_CENTER, 0, 0);
+    lv_img_set_src(logo, &logo_white_200);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    lv_img_set_src(logo, &logo_white_250);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    lv_img_set_src(logo, &logo_white_300);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    lv_img_set_src(logo, &logo_white_350);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    lv_img_set_src(logo, &logo_white_400);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    lv_img_set_src(logo, &logo_white_450);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    lv_img_set_src(logo, &logo_white_500);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    lv_img_set_src(logo, &logo_white_550);
+    vTaskDelay(pdMS_TO_TICKS(100));
+    lv_img_set_src(logo, &logo_white_600);
+    vTaskDelay(pdMS_TO_TICKS(3000));
 
     bsp_display_lock(0);
 

@@ -217,6 +217,10 @@ bool Camera::close(void)
         }
     }
 
+    bsp_led_red_set(0);
+    bsp_led_green_set(0);
+    bsp_led_blue_set(0);
+
     return true;
 }
 
@@ -470,6 +474,9 @@ static void camera_video_frame_operation(uint8_t *camera_buf, uint8_t camera_buf
     static int count = 0;
     if (count % 10 == 0) {
         perfmon_start(0, "PFS", "camera");
+        bsp_led_red_set(0);
+        bsp_led_green_set(1);
+        bsp_led_blue_set(0);
     } else if (count % 10 == 9) {
         perfmon_end(0, 10);
     }
