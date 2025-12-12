@@ -62,7 +62,6 @@ extern "C" void app_main(void)
     };
     lv_display_t *display = bsp_display_start_with_config(&cfg);
     // bsp_display_rotate(display, LV_DISPLAY_ROTATION_90);
-    bsp_display_backlight_on();
 
     bsp_rgb_led_duty_set(0, 0);
     bsp_rgb_led_duty_set(1, 0);
@@ -77,24 +76,27 @@ extern "C" void app_main(void)
     lv_obj_set_size(obj, 800, 1280);
     lv_obj_add_style(obj, &style, LV_PART_MAIN);
 
+    vTaskDelay(pdMS_TO_TICKS(500)); // skip the white screen
+    bsp_display_backlight_on();
+
     lv_obj_t *logo = lv_img_create(lv_scr_act());
     lv_obj_align(logo, LV_ALIGN_CENTER, 0, 0);
     lv_img_set_src(logo, &logo_white_200);
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(80));
     lv_img_set_src(logo, &logo_white_250);
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(90));
     lv_img_set_src(logo, &logo_white_300);
     vTaskDelay(pdMS_TO_TICKS(100));
     lv_img_set_src(logo, &logo_white_350);
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(110));
     lv_img_set_src(logo, &logo_white_400);
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(120));
     lv_img_set_src(logo, &logo_white_450);
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(130));
     lv_img_set_src(logo, &logo_white_500);
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(140));
     lv_img_set_src(logo, &logo_white_550);
-    vTaskDelay(pdMS_TO_TICKS(100));
+    vTaskDelay(pdMS_TO_TICKS(150));
     lv_img_set_src(logo, &logo_white_600);
     vTaskDelay(pdMS_TO_TICKS(3000));
 
