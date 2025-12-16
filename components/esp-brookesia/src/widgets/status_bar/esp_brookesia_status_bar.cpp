@@ -461,7 +461,7 @@ bool ESP_Brookesia_StatusBar::setBatteryPercent(bool charge_flag, int percent) c
 {
     ESP_BROOKESIA_LOGD("Set battery percent(0x%p: %d%%)", this, percent);
 
-    percent = max(min(percent, 100), 1);
+    percent = max(min(percent, 100), 0);
     if (_data.flags.enable_battery_label && (_battery_label != nullptr)) {
         lv_label_set_text_fmt(_battery_label.get(), "%d%%", percent);
     }

@@ -646,6 +646,8 @@ void AppSettings::euiRefresTask(void *arg)
     uint16_t total_sram_size_kb = 0;
     uint16_t free_psram_size_kb = 0;
     uint16_t total_psram_size_kb = 0;
+    // just for test
+    int per_print_cnt = 0;
 
     rtc_datatime_t datetime = { 0 };
     esp_err_t ret = bsp_pcf8563_get_datatime(&pcf8563, &datetime);
@@ -697,6 +699,13 @@ void AppSettings::euiRefresTask(void *arg)
         bool sta = bsp_battery_charge_status_read();
         app->status_bar->setBatteryPercent(sta, per);
         bsp_display_unlock();
+        
+        // just for test
+        per_print_cnt ++;
+        if(per_print_cnt >= 30) { // print battery_percent every minute
+            per_print_cnt = 0;
+            ESP_LOGW(TAG, "battery_percent: %d%%", per);
+        }
 
         // Update WiFi icon state
         if((xEventGroupGetBits(s_wifi_event_group) & WIFI_EVENT_CONNECTED)) {

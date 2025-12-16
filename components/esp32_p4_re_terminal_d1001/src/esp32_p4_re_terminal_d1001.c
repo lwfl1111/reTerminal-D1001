@@ -552,7 +552,10 @@ esp_err_t bsp_display_brightness_set(int brightness_percent)
         if (brightness_percent < 0) {
             brightness_percent = 0;
         }
-
+        if (brightness_percent) {
+            backlight_default = brightness_percent;
+        }
+        
         ESP_LOGD(TAG, "Setting LCD backlight: %d%%", brightness_percent);
         uint32_t duty_cycle = (1023 * brightness_percent) / 100; // LEDC resolution set to 10bits, thus: 100% = 1023
         BSP_ERROR_CHECK_RETURN_ERR(ledc_set_duty(LEDC_LOW_SPEED_MODE, LCD_LEDC_CH, duty_cycle));
@@ -1000,14 +1003,9 @@ static uint8_t vol_to_percentage(uint16_t voltage)
         return 0;
     }
 
-    if (voltage < battery_level_percent_table[1]) {
-        return 0 + (20UL * (int)(voltage-battery_level_percent_table[0])) / 
-            (int)(battery_level_percent_table[1] - battery_level_percent_table[0]); 
-    }
-
     for (uint8_t i = 0; i < BATTERY_POINT; i++) {
         if (voltage < battery_level_percent_table[i]) {
-            return 20 + (8*(i-2)) + (8UL * (int)(voltage-battery_level_percent_table[i-1])) / 
+            return (i - 1) * 10 + (10 * (int)(voltage-battery_level_percent_table[i-1])) / 
                 (int)(battery_level_percent_table[i] - battery_level_percent_table[i-1]);
         }
     }
@@ -1017,13 +1015,14 @@ static uint8_t vol_to_percentage(uint16_t voltage)
 
 int bsp_battery_percent_read(void)
 {
-    // if (bsp_bat_volt > 3300) {
-    //     int per = (bsp_bat_volt - 3300) / 8;
-    //     if (per > 100) per = 100;
-    //     return per;
-    // }
-    // return 0;
-    return vol_to_percentage(bsp_bat_volt);
+    uint8_t per = vol_to_percentage(bsp_bat_volt);
+    if (per == 0) {
+        return 0;
+    } else if (per > 0 && per < 5) {
+        return 1;
+    } else {
+        return (per / 5) * 5;
+    }
 }
 
 int bsp_usb_voltage_read(void)
@@ -1071,22 +1070,47 @@ static void bsp_battery_charge_en(bool en)
     }
 }
 
+#define VOLT_AVG_MAX    20
 static void bsp_battery_charge_task(void *arg)
 {
-    bool blink = false;
     uint8_t log_err_cnt = 0;
+    int bsp_bat_volt_cur = 0;
+    int volt[VOLT_AVG_MAX] = { 0 }, index = 0, count = 0; 
+    int32_t volt_sum = 0, volt_avg = 0;
     while (1) {
         bsp_usb_volt = bsp_adc_read(ADC_CHANNEL_1) * 2;
-        bsp_bat_volt = bsp_adc_read(ADC_CHANNEL_2) * 2;
+        bsp_bat_volt_cur = bsp_adc_read(ADC_CHANNEL_2) * 2;
+
+        volt[index ++] = bsp_bat_volt_cur;
+        if (index >= VOLT_AVG_MAX) {
+            index = 0;
+        }
+        if (count < VOLT_AVG_MAX) {
+            count ++;
+        }
+        volt_sum = 0;
+        for (int16_t i = 0; i < count; i++) {
+            volt_sum += volt[i];
+        }
+        volt_avg = volt_sum / count;
+        bsp_bat_volt_cur = volt_avg;
+
+        if (bsp_bat_volt == 0) {
+            bsp_bat_volt = bsp_bat_volt_cur;
+        }
+
         if (bsp_usb_volt > 4000) {
+            bsp_bat_volt = bsp_bat_volt_cur;
             if (!bsp_chg_error) {
                 log_err_cnt = 0;
                 int charge = gpio_get_level(BSP_BAT_CHARGE_STATE);
-                if (charge) { // high: charge done, low: charging
-                    // NONE
+                if (charge) {
+                    // high: charge done
                 } else {
-                    // NONE
-                    blink ^= 0x01;
+                    // low: charging
+                    // if (bsp_bat_volt >= battery_level_percent_table[BATTERY_POINT - 1]) {
+                    //     bsp_bat_volt = battery_level_percent_table[BATTERY_POINT - 1] - 20; // ???
+                    // }
                 }
             } else {
                 bsp_chg_error = false;
@@ -1095,10 +1119,11 @@ static void bsp_battery_charge_task(void *arg)
                     log_err_cnt = 0;
                     ESP_LOGE(TAG, "battery charge error!!!");
                 }
-                // NONE
             }
         } else {
-            // NONE
+            if (bsp_bat_volt_cur < bsp_bat_volt) {
+                bsp_bat_volt = bsp_bat_volt_cur;
+            }
         }
 
 #if BSP_BATTERY_CHARGE_PROTECT
@@ -1109,12 +1134,11 @@ static void bsp_battery_charge_task(void *arg)
             
         } else {
             bsp_battery_charge_en(false);
-            // NONE
         }
 #endif
 
-        vTaskDelay(pdMS_TO_TICKS(2000));
-        bsp_boot_count += 2;
+        vTaskDelay(pdMS_TO_TICKS(3000));
+        bsp_boot_count += 3;
     }
 }
 
