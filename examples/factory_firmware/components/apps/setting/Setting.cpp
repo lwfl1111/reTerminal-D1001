@@ -704,7 +704,7 @@ void AppSettings::euiRefresTask(void *arg)
         per_print_cnt ++;
         if(per_print_cnt >= 30) { // print battery_percent every minute
             per_print_cnt = 0;
-            ESP_LOGW(TAG, "battery_percent: %d%%", per);
+            ESP_LOGI(TAG, "battery_percent: %d%%, %d", per, bsp_battery_voltage_read());
         }
 
         // Update WiFi icon state

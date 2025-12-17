@@ -85,8 +85,17 @@ static bool sd_pwr_ctrl_init = false;
 static TaskHandle_t battery_manage_task;
 static bool battery_task_init = false;
 
-#define BATTERY_POINT 11
-static int battery_level_percent_table[BATTERY_POINT] = {3262, 3389, 3488, 3586, 3658, 3711, 3762, 3819, 3872, 3916, 4047};
+#define CHARGE_VOLT_HIGH    4150
+#define CHARGE_VOLT_LOW     3800
+static bool bat_chg_state = true;
+
+// #define BATTERY_POINT       11
+// #define PERCENT_STEP_MIN    10
+// static int battery_level_percent_table[BATTERY_POINT] = {3262, 3389, 3488, 3586, 3658, 3711, 3762, 3819, 3872, 3916, 4047};
+#define BATTERY_POINT       21
+#define PERCENT_STEP_MIN    5
+static int battery_level_percent_table[BATTERY_POINT] = {3262, 3390, 3467, 3554, 3619, 3659, 3686, 3710, 3731, 3752, 
+                                                        3774, 3797, 3827, 3855, 3880, 3901, 3915, 3934, 3958, 3978, 4047};
 
 esp_lcd_panel_handle_t disp_panel = NULL;
 
@@ -1005,7 +1014,7 @@ static uint8_t vol_to_percentage(uint16_t voltage)
 
     for (uint8_t i = 0; i < BATTERY_POINT; i++) {
         if (voltage < battery_level_percent_table[i]) {
-            return (i - 1) * 10 + (10 * (int)(voltage-battery_level_percent_table[i-1])) / 
+            return (i - 1) * PERCENT_STEP_MIN + (PERCENT_STEP_MIN * (int)(voltage - battery_level_percent_table[i-1])) / 
                 (int)(battery_level_percent_table[i] - battery_level_percent_table[i-1]);
         }
     }
@@ -1056,7 +1065,6 @@ static void charge_status_isr_handler(void* arg)
 
 static void bsp_battery_charge_en(bool en)
 {
-    static bool bat_chg_state = true;
     if (en) {
         if (!bat_chg_state) {
             bat_chg_state = true;
@@ -1070,10 +1078,11 @@ static void bsp_battery_charge_en(bool en)
     }
 }
 
-#define VOLT_AVG_MAX    20
+#define VOLT_AVG_MAX    60
 static void bsp_battery_charge_task(void *arg)
 {
     uint8_t log_err_cnt = 0;
+    int bsp_usb_volt_cur = 0;
     int bsp_bat_volt_cur = 0;
     int volt[VOLT_AVG_MAX] = { 0 }, index = 0, count = 0; 
     int32_t volt_sum = 0, volt_avg = 0;
@@ -1099,6 +1108,27 @@ static void bsp_battery_charge_task(void *arg)
             bsp_bat_volt = bsp_bat_volt_cur;
         }
 
+        if (bsp_bat_volt_cur > CHARGE_VOLT_HIGH) {
+            if (bat_chg_state) {
+                bsp_battery_charge_en(false);
+                ESP_LOGW(TAG, "battery high, disable charge");
+            }
+        } else if (bsp_bat_volt_cur < CHARGE_VOLT_LOW) {
+            if (!bat_chg_state) {
+                bsp_battery_charge_en(true);
+                ESP_LOGW(TAG, "battery low, enable charge");
+            }
+        } else {
+            if (abs(bsp_usb_volt - bsp_usb_volt_cur) > 2000)
+            {
+                bsp_usb_volt_cur = bsp_usb_volt;
+                if (bsp_usb_volt > 2000) {
+                    bsp_battery_charge_en(true);
+                    ESP_LOGW(TAG, "usb insert, enable charge");
+                }
+            }
+        }        
+
         if (bsp_usb_volt > 4000) {
             bsp_bat_volt = bsp_bat_volt_cur;
             if (!bsp_chg_error) {
@@ -1108,9 +1138,6 @@ static void bsp_battery_charge_task(void *arg)
                     // high: charge done
                 } else {
                     // low: charging
-                    // if (bsp_bat_volt >= battery_level_percent_table[BATTERY_POINT - 1]) {
-                    //     bsp_bat_volt = battery_level_percent_table[BATTERY_POINT - 1] - 20; // ???
-                    // }
                 }
             } else {
                 bsp_chg_error = false;
@@ -1137,8 +1164,8 @@ static void bsp_battery_charge_task(void *arg)
         }
 #endif
 
-        vTaskDelay(pdMS_TO_TICKS(3000));
-        bsp_boot_count += 3;
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        bsp_boot_count += 1;
     }
 }
 
@@ -1168,7 +1195,7 @@ esp_err_t bsp_battery_manage_start(void)
         io_in_conf.pin_bit_mask = 1ULL << BSP_BAT_VSYS_PG,
         gpio_config(&io_in_conf);
 
-        if (xTaskCreate(bsp_battery_charge_task, "bat_mng", 2048, NULL, 1, &battery_manage_task) != pdTRUE) {
+        if (xTaskCreate(bsp_battery_charge_task, "bat_mng", 3072, NULL, 1, &battery_manage_task) != pdTRUE) {
             ESP_LOGE(TAG, "Creating battery manage task failed");
             abort();
         }
